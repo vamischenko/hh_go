@@ -17,6 +17,10 @@ type Vacancy struct {
 		Name string `json:"name"`
 	} `json:"employer"`
 	AlternateURL string `json:"alternate_url"`
+	Area         struct {
+		Name string `json:"name"`
+	} `json:"area"`
+	PublishedAt string `json:"published_at"`
 }
 
 type VacanciesResponse struct {
@@ -33,7 +37,16 @@ type VacancyDetails struct {
 		Name string `json:"name"`
 	} `json:"employer"`
 	AlternateURL string `json:"alternate_url"`
-	Contacts     struct {
+	Area         struct {
+		Name string `json:"name"`
+	} `json:"area"`
+	PublishedAt string `json:"published_at"`
+	Salary      *struct {
+		From     *int   `json:"from"`
+		To       *int   `json:"to"`
+		Currency string `json:"currency"`
+	} `json:"salary"`
+	Contacts struct {
 		Name   string `json:"name"`
 		Email  string `json:"email"`
 		Phones []struct {
@@ -99,25 +112,47 @@ func main() {
 func printVacancy(counter int, vacancy Vacancy) {
 	fmt.Printf("%d. %s\n", counter, vacancy.Name)
 	fmt.Printf("   Компания: %s\n", vacancy.Employer.Name)
+
+	// Выводим месторасположение
+	if vacancy.Area.Name != "" {
+		fmt.Printf("   Местоположение: %s\n", vacancy.Area.Name)
+	}
+
 	fmt.Printf("   Ссылка: %s\n", vacancy.AlternateURL)
 
 	// Получаем детальную информацию с контактами
 	time.Sleep(100 * time.Millisecond) // Задержка перед запросом деталей
 	details, err := getVacancyDetails(vacancy.ID)
-	if err == nil && details.Contacts.Name != "" {
-		fmt.Printf("   Контакты:\n")
-		if details.Contacts.Name != "" {
-			fmt.Printf("      ФИО: %s\n", details.Contacts.Name)
-		}
-		if details.Contacts.Email != "" {
-			fmt.Printf("      Email: %s\n", details.Contacts.Email)
-		}
-		for _, phone := range details.Contacts.Phones {
-			phoneStr := fmt.Sprintf("+%s (%s) %s", phone.Country, phone.City, phone.Number)
-			if phone.Comment != "" {
-				phoneStr += fmt.Sprintf(" (%s)", phone.Comment)
+	if err == nil {
+		// Выводим зарплату, если указана
+		if details.Salary != nil {
+			salaryStr := "   Зарплата: "
+			if details.Salary.From != nil && details.Salary.To != nil {
+				salaryStr += fmt.Sprintf("%d - %d %s", *details.Salary.From, *details.Salary.To, details.Salary.Currency)
+			} else if details.Salary.From != nil {
+				salaryStr += fmt.Sprintf("от %d %s", *details.Salary.From, details.Salary.Currency)
+			} else if details.Salary.To != nil {
+				salaryStr += fmt.Sprintf("до %d %s", *details.Salary.To, details.Salary.Currency)
 			}
-			fmt.Printf("      Телефон: %s\n", phoneStr)
+			fmt.Println(salaryStr)
+		}
+
+		// Выводим контакты, если есть
+		if details.Contacts.Name != "" {
+			fmt.Printf("   Контакты:\n")
+			if details.Contacts.Name != "" {
+				fmt.Printf("      ФИО: %s\n", details.Contacts.Name)
+			}
+			if details.Contacts.Email != "" {
+				fmt.Printf("      Email: %s\n", details.Contacts.Email)
+			}
+			for _, phone := range details.Contacts.Phones {
+				phoneStr := fmt.Sprintf("+%s (%s) %s", phone.Country, phone.City, phone.Number)
+				if phone.Comment != "" {
+					phoneStr += fmt.Sprintf(" (%s)", phone.Comment)
+				}
+				fmt.Printf("      Телефон: %s\n", phoneStr)
+			}
 		}
 	}
 
